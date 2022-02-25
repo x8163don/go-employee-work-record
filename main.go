@@ -8,6 +8,7 @@ import (
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
 	"os"
+	"time"
 )
 
 type Member struct {
@@ -16,12 +17,12 @@ type Member struct {
 }
 
 func main() {
-
+	fmt.Println(time.Now().Local())
 	var currentMember Member
 
 	a := app.New()
 	w := a.NewWindow("打卡系統")
-	w.Resize(fyne.Size{Width: 640, Height: 320})
+	w.Resize(fyne.NewSize(680, 480))
 
 	members, _ := readMembers()
 
@@ -45,8 +46,28 @@ func main() {
 		}))
 	}
 
-	rvbox.Add(widget.NewButton("上班", func() { message.SetText(currentMember.no + " " + currentMember.name + "上班打卡記錄") }))
-	rvbox.Add(widget.NewButton("下班", func() { message.SetText(currentMember.no + " " + currentMember.name + "下班打卡記錄") }))
+	workBtn := widget.NewButton("up", func() {
+		if (currentMember == Member{}) {
+			message.SetText("please choose person")
+			return
+		}
+		message.SetText(fmt.Sprintf("%s - %s - %s - %s ", time.Now().Local(), currentMember.no, currentMember.name, "up"))
+		writeRecord(currentMember, "up")
+		currentMember = Member{}
+	})
+
+	offBtn := widget.NewButton("off", func() {
+		if (currentMember == Member{}) {
+			message.SetText("please choose person")
+			return
+		}
+		message.SetText(fmt.Sprintf("%s - %s - %s - %s ", time.Now().Local(), currentMember.no, currentMember.name, "off"))
+		writeRecord(currentMember, "off")
+		currentMember = Member{}
+	})
+
+	rvbox.Add(offBtn)
+	rvbox.Add(workBtn)
 
 	w.SetContent(vbox)
 	w.ShowAndRun()
@@ -73,6 +94,17 @@ func readMembers() ([]Member, error) {
 		data = append(data, member)
 	}
 	return data, nil
+}
+
+func writeRecord(member Member, recordType string) {
+	currentDir, err := os.Getwd()
+	file, err := os.OpenFile(currentDir+"/config/records.csv", os.O_APPEND|os.O_RDWR|os.O_CREATE, 0755)
+	if err != nil {
+		fmt.Printf(err.Error())
+		exit(fmt.Sprintf("Failed to open the CSV file members"))
+	}
+	file.WriteString(fmt.Sprintf("%s,%s,%s,%s\n", time.Now().Local(), member.no, member.name, recordType))
+	file.Close()
 }
 
 func exit(msg string) {
